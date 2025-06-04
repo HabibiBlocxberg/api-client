@@ -2,15 +2,15 @@
   "name": "@wot/api-client",
   "version": "1.0.0",
   "description": "Shared API client for WorldOfTextcraft projects",
-  "repository": "git://github.com/HabibiBlocxberg/api-client.git",
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/HabibiBlocxberg/api-client.git"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch", 
+    "dev": "tsc --watch",
     "test": "vitest",
     "test:run": "vitest run",
     "lint": "eslint src --ext .ts",
@@ -19,7 +19,12 @@
     "release:minor": "yarn version minor",
     "release:major": "yarn version major"
   },
-  "keywords": ["api", "client", "http", "worldoftextcraft"],
+  "keywords": [
+    "api",
+    "client",
+    "http",
+    "worldoftextcraft"
+  ],
   "author": "WorldOfTextcraft Team",
   "license": "MIT",
   "files": [
@@ -38,4 +43,4 @@
   "peerDependencies": {
     "typescript": ">=4.5.0"
   }
-} 
+}
