@@ -12,6 +12,7 @@ export class ApiClient {
   private baseUrl: string;
   private defaultTimeout: number;
   private defaultHeaders: Record<string, string>;
+  private authToken?: string;
 
   constructor (config: ApiClientConfig = {}) {
     this.baseUrl = config.baseUrl || "";
@@ -29,6 +30,14 @@ export class ApiClient {
 
   public getBaseUrl (): string {
     return this.baseUrl;
+  }
+
+  public setToken (token: string): void {
+    this.authToken = token;
+  }
+
+  public getToken (): string | undefined {
+    return this.authToken;
   }
 
   public async get<T> (
@@ -86,7 +95,7 @@ export class ApiClient {
       const requestInit: RequestInit = {
         method,
         headers,
-        signal: controller.signal,
+        signal: config.signal || controller.signal,
       };
 
       if (data && method !== ApiMethods.GET) {
@@ -105,11 +114,12 @@ export class ApiClient {
       }
 
       const contentType = response.headers.get('content-type');
+      
       if (contentType && contentType.includes('application/json')) {
         return response.json() as Promise<T>;
+      } else {
+        return response.text() as unknown as Promise<T>;
       }
-
-      return response.text() as unknown as Promise<T>;
     } catch (error) {
       clearTimeout(timeoutId);
       if (error instanceof Error && error.name === 'AbortError') {
