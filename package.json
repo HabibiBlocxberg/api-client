@@ -6,6 +6,9 @@
     "type": "git",
     "url": "git://github.com/HabibiBlocxberg/api-client.git"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
