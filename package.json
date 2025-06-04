@@ -1,0 +1,37 @@
+{
+  "name": "@wot/api-client",
+  "version": "1.0.0",
+  "description": "Shared API client for WorldOfTextcraft projects",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch", 
+    "test": "vitest",
+    "test:run": "vitest run",
+    "lint": "eslint src --ext .ts",
+    "prepublishOnly": "yarn build",
+    "release:patch": "yarn version patch",
+    "release:minor": "yarn version minor",
+    "release:major": "yarn version major"
+  },
+  "keywords": ["api", "client", "http", "worldoftextcraft"],
+  "author": "WorldOfTextcraft Team",
+  "license": "MIT",
+  "files": [
+    "dist",
+    "README.md",
+    "src"
+  ],
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
+  "peerDependencies": {
+    "typescript": ">=4.5.0"
+  }
+} 
