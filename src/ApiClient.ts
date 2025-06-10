@@ -126,7 +126,7 @@ export class ApiClient {
       }
 
       const contentType = response.headers.get('content-type');
-
+      
       if (contentType && contentType.includes('application/json')) {
         const rawResponseData = await response.json();
         
