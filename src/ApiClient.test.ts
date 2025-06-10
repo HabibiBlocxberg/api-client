@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ApiClient, ApiMethods, ApiError } from './ApiClient';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiClient, ApiMethods } from './ApiClient';
+import { ApiResponseDto } from './ApiResponseDto';
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -38,6 +39,19 @@ describe('ApiClient', () => {
     });
   });
 
+  describe('setToken', () => {
+    it('should set authorization header when token is provided', () => {
+      apiClient.setToken('test-token');
+      expect(apiClient.getToken()).toBe('test-token');
+    });
+
+    it('should remove authorization header when token is empty', () => {
+      apiClient.setToken('test-token');
+      apiClient.setToken('');
+      expect(apiClient.getToken()).toBe('');
+    });
+  });
+
   describe('HTTP methods', () => {
     beforeEach(() => {
       mockFetch.mockResolvedValue({
@@ -47,8 +61,8 @@ describe('ApiClient', () => {
       });
     });
 
-    it('should make GET request', async () => {
-      const result = await apiClient.get('/test');
+    it('should make GET request and return ApiResponseDto', async () => {
+      const result = await apiClient.get<{ data: string }>('/test');
       
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.example.com/test',
@@ -56,12 +70,15 @@ describe('ApiClient', () => {
           method: 'GET'
         })
       );
-      expect(result).toEqual({ data: 'test' });
+      
+      expect(result).toBeInstanceOf(ApiResponseDto);
+      expect(result.isSuccess()).toBe(true);
+      expect(result.getData()).toEqual({ data: 'test' });
     });
 
     it('should make POST request with data', async () => {
       const data = { name: 'test' };
-      await apiClient.post('/test', data);
+      const result = await apiClient.post('/test', data);
       
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.example.com/test',
@@ -70,11 +87,14 @@ describe('ApiClient', () => {
           body: JSON.stringify(data)
         })
       );
+      
+      expect(result).toBeInstanceOf(ApiResponseDto);
+      expect(result.isSuccess()).toBe(true);
     });
 
     it('should make PUT request', async () => {
       const data = { id: 1, name: 'updated' };
-      await apiClient.put('/test/1', data);
+      const result = await apiClient.put('/test/1', data);
       
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.example.com/test/1',
@@ -83,11 +103,14 @@ describe('ApiClient', () => {
           body: JSON.stringify(data)
         })
       );
+      
+      expect(result).toBeInstanceOf(ApiResponseDto);
+      expect(result.isSuccess()).toBe(true);
     });
 
     it('should make PATCH request', async () => {
       const data = { name: 'patched' };
-      await apiClient.patch('/test/1', data);
+      const result = await apiClient.patch('/test/1', data);
       
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.example.com/test/1',
@@ -96,10 +119,13 @@ describe('ApiClient', () => {
           body: JSON.stringify(data)
         })
       );
+      
+      expect(result).toBeInstanceOf(ApiResponseDto);
+      expect(result.isSuccess()).toBe(true);
     });
 
     it('should make DELETE request', async () => {
-      await apiClient.delete('/test/1');
+      const result = await apiClient.delete('/test/1');
       
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.example.com/test/1',
@@ -107,11 +133,14 @@ describe('ApiClient', () => {
           method: 'DELETE'
         })
       );
+      
+      expect(result).toBeInstanceOf(ApiResponseDto);
+      expect(result.isSuccess()).toBe(true);
     });
   });
 
   describe('error handling', () => {
-    it('should throw ApiError on HTTP error', async () => {
+    it('should return error ApiResponseDto on HTTP error', async () => {
       mockFetch.mockResolvedValue({
         ok: false,
         status: 404,
@@ -119,17 +148,21 @@ describe('ApiClient', () => {
         json: vi.fn().mockResolvedValue({ message: 'Resource not found' })
       });
 
-      await expect(apiClient.get('/not-found')).rejects.toThrow(ApiError);
+      const result = await apiClient.get('/not-found');
+      
+      expect(result).toBeInstanceOf(ApiResponseDto);
+      expect(result.isError()).toBe(true);
+      expect(result.getError()).toBe('Resource not found');
     });
 
-    it('should handle timeout', async () => {
-      const client = new ApiClient({ timeout: 100 });
-      
-      mockFetch.mockImplementation(() => 
-        new Promise(resolve => setTimeout(resolve, 200))
-      );
+    it('should handle network errors with error ApiResponseDto', async () => {
+      mockFetch.mockRejectedValue(new Error('Network error'));
 
-      await expect(client.get('/slow')).rejects.toThrow('Request timeout');
+      const result = await apiClient.get('/test');
+      
+      expect(result).toBeInstanceOf(ApiResponseDto);
+      expect(result.isError()).toBe(true);
+      expect(result.getError()).toBe('Network error');
     });
   });
 

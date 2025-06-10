@@ -1,3 +1,4 @@
+import { ApiResponseDto } from './ApiResponseDto';
 import { ApiClientConfig, RequestConfig } from './types';
 
 export enum ApiMethods {
@@ -34,6 +35,11 @@ export class ApiClient {
 
   public setToken (token: string): void {
     this.authToken = token;
+    if (token) {
+      this.defaultHeaders['Authorization'] = `Bearer ${token}`;
+    } else {
+      delete this.defaultHeaders['Authorization'];
+    }
   }
 
   public getToken (): string | undefined {
@@ -43,7 +49,7 @@ export class ApiClient {
   public async get<T> (
     url: string, 
     config: RequestConfig = {}
-  ): Promise<T> {
+  ): Promise<ApiResponseDto<T>> {
     return this.request<T>(url, ApiMethods.GET, undefined, config);
   }
 
@@ -51,7 +57,7 @@ export class ApiClient {
     url: string, 
     data?: unknown, 
     config: RequestConfig = {}
-  ): Promise<T> {
+  ): Promise<ApiResponseDto<T>> {
     return this.request<T>(url, ApiMethods.POST, data, config);
   }
 
@@ -59,7 +65,7 @@ export class ApiClient {
     url: string, 
     data?: unknown, 
     config: RequestConfig = {}
-  ): Promise<T> {
+  ): Promise<ApiResponseDto<T>> {
     return this.request<T>(url, ApiMethods.PUT, data, config);
   }
 
@@ -67,14 +73,14 @@ export class ApiClient {
     url: string, 
     data?: unknown, 
     config: RequestConfig = {}
-  ): Promise<T> {
+  ): Promise<ApiResponseDto<T>> {
     return this.request<T>(url, ApiMethods.PATCH, data, config);
   }
 
   public async delete<T> (
     url: string, 
     config: RequestConfig = {}
-  ): Promise<T> {
+  ): Promise<ApiResponseDto<T>> {
     return this.request<T>(url, ApiMethods.DELETE, undefined, config);
   }
 
@@ -83,7 +89,8 @@ export class ApiClient {
     method: ApiMethods,
     data?: unknown,
     config: RequestConfig = {}
-  ): Promise<T> {
+  ): Promise<ApiResponseDto<T>> {
+
     const fullUrl = this.buildUrl(url, config.baseUrl);
     const headers = this.buildHeaders(config.headers);
     const timeout = config.timeout || this.defaultTimeout;
@@ -105,27 +112,58 @@ export class ApiClient {
       if (config.withCredentials) {
         requestInit.credentials = 'include';
       }
+      if (this.getToken()) {
+  
+        headers.set('Authorization', `Bearer ${this.getToken()}`);
+      }
 
       const response = await fetch(fullUrl, requestInit);
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        throw await this.handleErrorResponse(response);
+        const error = await this.handleErrorResponse(response);
+        return ApiResponseDto.error<T>(error.message);
       }
 
       const contentType = response.headers.get('content-type');
-      
+
       if (contentType && contentType.includes('application/json')) {
-        return response.json() as Promise<T>;
+        const rawResponseData = await response.json();
+        
+        // Check if response has Backend API structure { success: true, data: ... }
+        if (rawResponseData && typeof rawResponseData === 'object' && 'success' in rawResponseData) {
+          // If Backend returned an error
+          if (!rawResponseData.success) {
+            const errorMessage = rawResponseData.error?.message || rawResponseData.error || 'Unknown error from backend';
+            return ApiResponseDto.error<T>(errorMessage);
+          }
+          
+          // If Backend was successful, extract the data part
+          const responseData = rawResponseData.data as T;
+          return ApiResponseDto.success<T>(responseData);
+        }
+        
+        // Fallback for responses without Backend API structure
+        const responseData = rawResponseData as T;
+        return ApiResponseDto.success<T>(responseData);
       } else {
-        return response.text() as unknown as Promise<T>;
+        const responseData = await response.text() as unknown as T;
+        return ApiResponseDto.success<T>(responseData);
       }
+      
     } catch (error) {
       clearTimeout(timeoutId);
+      
       if (error instanceof Error && error.name === 'AbortError') {
-        throw new ApiError('Request timeout', 408, 'TIMEOUT');
+        return ApiResponseDto.error<T>('Request timeout');
       }
-      throw error;
+      
+      if (error instanceof ApiError) {
+        return ApiResponseDto.error<T>(error.message);
+      }
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      return ApiResponseDto.error<T>(errorMessage);
     }
   }
 
